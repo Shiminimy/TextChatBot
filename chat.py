@@ -1,4 +1,8 @@
 import random
+
+
+from aiogram.types import Message
+
 import json
 import torch
 from model import NeuralNet
