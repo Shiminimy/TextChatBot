@@ -64,7 +64,7 @@ output_size = len(tags)
 
 
 dataset = ChatDataset()
-train_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True, num_workers=2)
+train_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True, num_workers=0) #на пк попробуй запуститьс нулем? на мак так запустилось а на пк мы делали с 2
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model = NeuralNet(input_size, hidden_size, output_size).to(device)
 
@@ -110,3 +110,4 @@ FILE = "data.pth"
 torch.save(data, FILE)
 
 print(f'Training Complete, file saved to {FILE}')
+
