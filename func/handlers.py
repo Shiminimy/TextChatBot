@@ -89,4 +89,3 @@ async def echo(message: types.Message):
 def reg_handler(dp):
     dp.message.register(start, Command("start"))
     dp.message.register(echo)
-   
