@@ -12,26 +12,82 @@ from aiogram import F, Router
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 import random
-
-
 from aiogram.types import Message
-
 import json
 import torch
 from model import NeuralNet
 from nltk_utils import bag_of_words, tokenize
-
-
-
-
-
-
+#-----------------------------------------------------------------------------------------------------------------------------------------
 async def start(message: Message):
-    await message.answer("Привет напиши мне что нибудь из этого или похожее на это: patterns: Привет Как дела Есть кто-нибудь? Привет Добрый день Пока, До встречи, До свидания, Увидимся позже Спасибо, Это полезно, Большое спасибо!, Какие предметы у вас есть?, Какие виды товаров у вас есть?, Что вы продаете? Принимаете ли вы кредитные карты? Принимаете ли вы Mastercard? Могу ли я заплатить с помощью Paypal? Только наличные? Сколько времени занимает доставка? Сколько времени потребуется на доставку?Когда я получу свою посылку? Расскажи мне анекдот! Расскажи мне что-нибудь смешное! Знаешь ли ты анекдот?")
-
-
-
-
+    await message.answer("Добро пожаловать! Выберите действие:", reply_markup=start_keyboard())
+#-----------------------------------------------------------------------------------------------------------------------------------------
+@dp.callback_query_handler(lambda c: c.data in ['login', 'register'])
+async def process_callback(callback_query: types.CallbackQuery):
+    action = callback_query.data
+    if action == 'login':
+        await dp.bot.send_message(callback_query.from_user.id, 'Введите ваш логин:')
+        await LoginState.waiting_for_username.set()
+    elif action == 'register':
+        await dp.bot.send_message(callback_query.from_user.id, 'Введите ваш логин для регистрации:')
+        await RegisterState.waiting_for_username.set()
+    @dp.message_handler(state=LoginState.waiting_for_username)
+    async def process_login_username(message: types.Message, state: FSMContext):
+        username = message.text
+        data = load_data()
+        if username in data and data[username]['attempts'] < 7:
+            await message.answer('Введите ваш пароль:')
+            await LoginState.waiting_for_password.set()
+            await state.update_data(username=username)
+        elif username in data:
+            await message.answer('Превышен лимит попыток. Попробуйте позже.')
+        else:
+            await message.answer('Пользователь не найден. Попробуйте еще раз.')
+            data[username] = data.get(username, {'attempts': 0})
+            data[username]['attempts'] += 1
+            save_data(data)
+#-----------------------------------------------------------------------------------------------------------------------------------------
+    @dp.message_handler(state=LoginState.waiting_for_password)
+    async def process_login_password(message: types.Message, state: FSMContext):
+        password = message.text
+        state_data = await state.get_data()
+        username = state_data.get('username')
+        data = load_data()
+        if data.get(username, {}).get('password') == password:
+            await message.answer('Вы вошли успешно!')
+            data[username]['attempts'] = 0
+            save_data(data)
+        else:
+            await message.answer('Неверный пароль. Попробуйте снова.')
+            data[username]['attempts'] += 1
+            save_data(data)
+        
+        if data[username]['attempts'] >= 7:
+            await message.answer('Превышен лимит попыток. Попробуйте позже.')
+        await state.finish()
+#-----------------------------------------------------------------------------------------------------------------------------------------
+    @dp.message_handler(state=RegisterState.waiting_for_username)
+    async def process_register_username(message: types.Message, state: FSMContext):
+        username = message.text
+        data = load_data()
+        if username in data:
+            await message.answer('Этот логин уже занят. Попробуйте другой.')
+        else:
+            await message.answer('Введите ваш пароль для регистрации:')
+            await RegisterState.waiting_for_password.set()
+            await state.update_data(username=username)
+#-----------------------------------------------------------------------------------------------------------------------------------------
+    @dp.message_handler(state=RegisterState.waiting_for_password)
+    async def process_register_password(message: types.Message, state: FSMContext):
+        password = message.text
+        state_data = await state.get_data()
+        username = state_data.get('username')
+        data = load_data()
+        data[username] = {'password': password, 'attempts': 0}
+        save_data(data)
+        await message.answer('Вы зарегистрированы успешно!')
+        await state.finish()
+#-----------------------------------------------------------------------------------------------------------------------------------------
+@dp.message_handler(commands=['ai'])
 async def echo(message: types.Message):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -76,16 +132,7 @@ async def echo(message: types.Message):
     else:
         await message.answer(f'{bot_name}: Не понимаю..............')
 
-
-
-
-
-
-
-
-
-
-
+#-----------------------------------------------------------------------------------------------------------------------------------------
 def reg_handler(dp):
     dp.message.register(start, Command("start"))
     dp.message.register(echo)
