@@ -130,6 +130,9 @@ async def echo(message: types.Message):
             if tag == intent["tag"]:
                 await message.answer(f'{bot_name}: {random.choice(intent["responses"])}')
     else:
+        #реализация отправки стика думаю будет прикольно такое реализовать, проверим как работает после всего
+        #sticker_id = 'CAACAgIAAxkBAAEMmYpmrqds1mQgWTdK4Sn5rJDZWV4AAYYAAs5SAAJRaEhJsTkW5jcTYaE1BA'
+        #await bot.send_sticker(chat_id=message.chat.id, sticker=sticker_id)
         await message.answer(f'{bot_name}: Не понимаю..............')
 
 #-----------------------------------------------------------------------------------------------------------------------------------------
